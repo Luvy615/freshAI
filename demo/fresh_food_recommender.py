@@ -80,15 +80,16 @@ class Neo4jClient:
     def search_by_product_type(self, product_type: str, limit: int = 10) -> List[Dict]:
         with self.driver.session() as session:
             result = session.run("""
-                MATCH (p:商品)-[:属于]->(pt:商品主体)
-                WHERE pt.名称 = $product_type
-                OPTIONAL MATCH (p)-[:具有口感]->(t:口感特征)
-                OPTIONAL MATCH (p)-[:销售]->(shop:店铺)
+                MATCH (p:商品)
+                WHERE p.商品主体 = $product_type
                 RETURN p.SKU AS SKU, p.产品名称 AS productName, p.价格 AS price,
                        p.销量 AS sales, p.付款人数 AS buyers,
-                       pt.名称 AS productType,
-                       COLLECT(DISTINCT t.名称) AS tastes,
-                       shop.名称 AS shop, shop.地理位置 AS region
+                       p.商品主体 AS productType,
+                       p.口感 AS taste,
+                       p.类别 AS category,
+                       p.应用场景 AS scene,
+                       p.地理位置 AS region
+                ORDER BY p.销量 DESC
                 LIMIT $limit
             """, product_type=product_type, limit=limit)
             return [dict(record) for record in result]
@@ -96,16 +97,14 @@ class Neo4jClient:
     def search_by_product_type_and_taste(self, product_type: str, taste: str, limit: int = 10) -> List[Dict]:
         with self.driver.session() as session:
             result = session.run("""
-                MATCH (p:商品)-[:属于]->(pt:商品主体)
-                WHERE pt.名称 = $product_type
-                MATCH (p)-[:具有口感]->(t:口感特征)
-                WHERE t.名称 CONTAINS $taste
-                OPTIONAL MATCH (p)-[:销售]->(shop:店铺)
+                MATCH (p:商品)
+                WHERE p.商品主体 = $product_type AND p.口感 CONTAINS $taste
                 RETURN p.SKU AS SKU, p.产品名称 AS productName, p.价格 AS price,
                        p.销量 AS sales, p.付款人数 AS buyers,
-                       pt.名称 AS productType,
-                       COLLECT(DISTINCT t.名称) AS tastes,
-                       shop.名称 AS shop
+                       p.商品主体 AS productType,
+                       p.口感 AS taste,
+                       p.地理位置 AS region
+                ORDER BY p.销量 DESC
                 LIMIT $limit
             """, product_type=product_type, taste=taste, limit=limit)
             return [dict(record) for record in result]
@@ -113,16 +112,13 @@ class Neo4jClient:
     def search_by_category(self, category: str, limit: int = 20) -> List[Dict]:
         with self.driver.session() as session:
             result = session.run("""
-                MATCH (p:商品)-[:属于]->(pt:商品主体)
-                MATCH (pt:商品主体)-[:属于]->(cat:商品类别)
-                WHERE cat.名称 = $category
-                OPTIONAL MATCH (p)-[:具有口感]->(t:口感特征)
-                OPTIONAL MATCH (p)-[:销售]->(shop:店铺)
+                MATCH (p:商品)
+                WHERE p.类别 = $category
                 RETURN p.SKU AS SKU, p.产品名称 AS productName, p.价格 AS price,
                        p.销量 AS sales, p.付款人数 AS buyers,
-                       pt.名称 AS productType,
-                       COLLECT(DISTINCT t.名称) AS tastes,
-                       shop.名称 AS shop
+                       p.商品主体 AS productType,
+                       p.口感 AS taste,
+                       p.地理位置 AS region
                 ORDER BY p.销量 DESC
                 LIMIT $limit
             """, category=category, limit=limit)
@@ -133,14 +129,11 @@ class Neo4jClient:
             result = session.run("""
                 MATCH (p:商品)
                 WHERE p.产品名称 CONTAINS $keyword
-                OPTIONAL MATCH (p)-[:属于]->(pt:商品主体)
-                OPTIONAL MATCH (p)-[:具有口感]->(t:口感特征)
-                OPTIONAL MATCH (p)-[:销售]->(shop:店铺)
                 RETURN p.SKU AS SKU, p.产品名称 AS productName, p.价格 AS price,
                        p.销量 AS sales, p.付款人数 AS buyers,
-                       pt.名称 AS productType,
-                       COLLECT(DISTINCT t.名称) AS tastes,
-                       shop.名称 AS shop
+                       p.商品主体 AS productType,
+                       p.口感 AS taste,
+                       p.地理位置 AS region
                 ORDER BY p.销量 DESC
                 LIMIT $limit
             """, keyword=keyword, limit=limit)
