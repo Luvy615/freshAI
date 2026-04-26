@@ -152,79 +152,18 @@ class MilvusClient:
         connections.connect(alias="default", uri=MILVUS_URI, token=MILVUS_TOKEN, secure=True)
         self.collection = Collection(name=COLLECTION_NAME)
         self.collection.load()
-        self._load_clip_model()
-    
-    def _load_clip_model(self):
-        try:
-            from modelscope import AutoModel, AutoProcessor
-            import torch
-            self.model = AutoModel.from_pretrained(MODEL_DIR)
-            self.processor = AutoProcessor.from_pretrained(MODEL_DIR)
-            self.model.eval()
-            self._torch = torch
-            print("[MilvusClient] CLIP模型加载完成")
-        except Exception as e:
-            print(f"[MilvusClient] CLIP模型加载失败: {e}")
-            self.model = None
-    
-    def create_text_embedding(self, text: str) -> np.ndarray:
-        if self.model is None:
-            return np.zeros(512)
-        with self._torch.no_grad():
-            inputs = self.processor(text=[text], return_tensors="pt", padding=True, truncation=True)
-            outputs = self.model.get_text_features(input_ids=inputs["input_ids"], attention_mask=inputs["attention_mask"])
-            embedding = outputs.pooler_output if hasattr(outputs, 'pooler_output') else outputs.last_hidden_state[:, 0, :]
-            embedding = embedding / embedding.norm(p=2, dim=-1, keepdim=True)
-            return embedding[0].cpu().numpy()
+        self._model_available = False
     
     def search_by_text(self, query_text: str, top_k: int = 10) -> List[Dict]:
-        if self.collection.num_entities == 0:
-            return []
-        query_embedding = self.create_text_embedding(query_text)
-        results = self.collection.search(
-            data=[query_embedding.tolist()],
-            anns_field="embedding",
-            param={"metric_type": "COSINE", "params": {"nprobe": 10}},
-            limit=top_k,
-            output_fields=["SKU", "product_name", "price", "sales", "buyers", "shop", "region", "category", "product_type", "taste", "scene"]
-        )
-        return self._parse_results(results)
+        return []
     
     def _search_by_image(self, image_path: str, top_k: int = 10) -> List[Dict]:
-        if self.collection.num_entities == 0 or self.model is None:
-            return []
-        from PIL import Image
-        img = Image.open(image_path).convert('RGB')
-        with self._torch.no_grad():
-            inputs = self.processor(images=img, return_tensors="pt")
-            outputs = self.model.get_image_features(**inputs)
-            embedding = outputs.pooler_output if hasattr(outputs, 'pooler_output') else outputs.last_hidden_state[:, 0, :]
-            embedding = embedding / embedding.norm(p=2, dim=-1, keepdim=True)
-            image_embedding = embedding[0].cpu().numpy()
-        results = self.collection.search(
-            data=[image_embedding.tolist()],
-            anns_field="embedding",
-            param={"metric_type": "COSINE", "params": {"nprobe": 10}},
-            limit=top_k,
-            output_fields=["SKU", "product_name", "price", "sales", "buyers", "shop", "region", "category", "product_type", "taste", "scene"]
-        )
-        return self._parse_results(results)
+        return []
     
     def search_by_text_with_filter(self, query_text: str, product_type: str = "", taste: str = "", top_k: int = 10) -> List[Dict]:
-        candidates = self.search_by_text(query_text, top_k=top_k*2)
-        if not product_type and not taste:
-            return candidates[:top_k]
-        filtered = []
-        for c in candidates:
-            pt_match = True
-            if product_type:
-                pt = c.get('product_type', c.get('productType', ''))
-                pt_match = product_type in pt or pt in product_type
-            if pt_match:
-                filtered.append(c)
-        if not filtered and product_type:
-            filtered = self._get_products_by_type(product_type, limit=top_k)
-        return filtered[:top_k]
+        if not product_type:
+            return []
+        return self._get_products_by_type(product_type, limit=top_k)
     
     def _get_products_by_type(self, product_type: str, limit: int = 20) -> List[Dict]:
         if self.collection.num_entities == 0:
