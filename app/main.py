@@ -212,8 +212,8 @@ def init_session():
 def render_header():
     st.markdown("""
     <div class="main-header">
-        <h1>生小鲜</h1>
-        <p>智能生鲜商品推荐</p>
+        <h1 style="line-height: 1.5;">生小鲜</h1>
+        <p style="line-height: 1.8;">智能生鲜商品推荐</p>
     </div>
     """, unsafe_allow_html=True)
 
