@@ -50,6 +50,9 @@ st.markdown("""
         padding: 25px 0;
         border-bottom: 2px solid #4CAF50;
         margin-bottom: 30px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
     }
     
     .main-header h1 {
@@ -63,7 +66,7 @@ st.markdown("""
     .main-header p {
         color: #888;
         font-size: 0.95rem;
-        margin-top: 10px;
+        margin: 8px 0 0 0;
     }
     
     .chat-box {
@@ -350,21 +353,20 @@ def main():
     render_header()
     render_chat()
     
-    with st.container():
-        col1, col2 = st.columns([6, 1])
-        with col1:
-            user_input = st.text_input(
-                "",
-                placeholder="请输入您想购买的生鲜商品...",
-                key=f"input_{st.session_state.input_key}",
-                label_visibility="collapsed"
-            )
-        with col2:
-            search_clicked = st.button("搜索", type="primary", use_container_width=True)
-        
-        if search_clicked and user_input:
-            process_search(user_input)
-            st.session_state.input_key += 1
+    col1, col2 = st.columns([6, 1])
+    with col1:
+        user_input = st.text_input(
+            "",
+            placeholder="请输入您想购买的生鲜商品...",
+            key=f"input_{st.session_state.input_key}",
+            label_visibility="collapsed"
+        )
+    with col2:
+        search_clicked = st.button("搜索", type="primary", use_container_width=True)
+    
+    if search_clicked and user_input:
+        process_search(user_input)
+        st.session_state.input_key += 1
     
     st.markdown("""
     <div class="footer">
